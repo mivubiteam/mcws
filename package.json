@@ -11,7 +11,8 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
-		"lint": "prettier --check ."
+		"lint": "prettier --check .",
+		"start": "bun server/index.ts"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^5.2.12",
@@ -19,6 +20,9 @@
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
 		"@tailwindcss/typography": "^0.5.15",
 		"@tailwindcss/vite": "^4.0.0",
+		"@types/express": "^4.17.21",
+		"@types/node": "^20.12.12",
+		"@types/uuid": "^9.0.8",
 		"@types/ws": "^8.18.1",
 		"prettier": "^3.4.2",
 		"prettier-plugin-svelte": "^3.3.3",
@@ -30,6 +34,7 @@
 		"vite": "^6.2.6"
 	},
 	"dependencies": {
+		"express": "^5.1.0",
 		"socket.io": "^4.8.1",
 		"socket.io-client": "^4.8.1",
 		"uuid": "^11.1.0",
