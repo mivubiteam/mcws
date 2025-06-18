@@ -199,10 +199,6 @@
 		}
 	}
 
-	function getTotalPlayers(snapshot: any): number {
-		return Array.isArray(snapshot.data) ? snapshot.data.length : 0;
-	}
-
 	function getPlayerStats(player: any) {
 		if (!player.scores) return [];
 		return Object.entries(player.scores).map(([key, value]) => ({ key, value }));
@@ -240,7 +236,6 @@
 			{worldDataSnapshots}
 			{filteredSnapshots}
 			{formatTimestamp}
-			{getTotalPlayers}
 			{getPlayerStats}
 			on:projectChange={(e) => (selectedProject = e.detail)}
 		/>

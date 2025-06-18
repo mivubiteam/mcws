@@ -8,7 +8,6 @@
 	export let worldDataSnapshots: Record<string, any>;
 	export let filteredSnapshots: Array<[string, any]>; // Corrected type
 	export let formatTimestamp: (date: Date) => string;
-	export let getTotalPlayers: (snapshot: any) => number;
 	export let getPlayerStats: (player: any) => Array<{ key: string; value: any }>;
 	let playerDataVisible: Record<string, boolean> = {}; // For player data collapsibility
 
@@ -25,13 +24,34 @@
 	$: {
 		filteredSnapshots.forEach(([key, _]) => {
 			if (playerDataVisible[key] === undefined) {
-				playerDataVisible[key] = false; // Default to visible
+				playerDataVisible[key] = false; // Default to collapsed
 			}
 		});
 	}
 
 	function togglePlayerData(key: string) {
 		playerDataVisible[key] = !playerDataVisible[key];
+	}
+
+	// Helper function to get player data from the CTF structure
+	function getPlayerData(snapshot: any): any[] {
+		if (snapshot.data && snapshot.data.player_data && Array.isArray(snapshot.data.player_data)) {
+			return snapshot.data.player_data;
+		}
+		return Array.isArray(snapshot.data) ? snapshot.data : [];
+	}
+
+	// Helper function to get recent winner
+	function getRecentWinner(snapshot: any): string | null {
+		if (snapshot.data && snapshot.data.recent_winner) {
+			return snapshot.data.recent_winner;
+		}
+		return null;
+	}
+
+	// Helper function to check if this is CTF data structure
+	function isCTFData(snapshot: any): boolean {
+		return snapshot.data && snapshot.data.player_data && Array.isArray(snapshot.data.player_data);
 	}
 </script>
 
@@ -116,6 +136,15 @@
 										Client: {snapshot.clientId.substring(0, 8)}
 									</p>
 								{/if}
+								{#if getRecentWinner(snapshot)}
+									<div class="mt-2">
+										<span
+											class="inline-flex items-center rounded-full bg-green-700/30 px-3 py-1 text-sm font-medium text-green-300"
+										>
+											🏆 Recent Winner: {getRecentWinner(snapshot)}
+										</span>
+									</div>
+								{/if}
 							</div>
 							<div class="text-left sm:text-right">
 								<div class="text-sm text-slate-400">Last Updated</div>
@@ -144,7 +173,7 @@
 									></path>
 								</svg>
 								<span class="pr-2 font-medium text-white"
-									>{getTotalPlayers(snapshot)} Player{getTotalPlayers(snapshot) !== 1
+									>{getPlayerData(snapshot).length} Player{getPlayerData(snapshot).length !== 1
 										? 's'
 										: ''}</span
 								>
@@ -170,92 +199,177 @@
 
 					{#if playerDataVisible[key]}
 						<div class="p-6">
-							{#if Array.isArray(snapshot.data) && snapshot.data.length > 0}
-								<div class="grid gap-6">
-									{#each snapshot.data as player (player.uuid || player.name)}
-										<div
-											class="rounded-lg border border-slate-700/30 bg-slate-800/40 p-6 transition-colors hover:bg-slate-800/60"
-										>
-											<div class="mb-4 flex items-center gap-3">
-												<img
-													class="h-10 w-10 rounded-lg border border-slate-600"
-													src="https://starlightskins.lunareclipse.studio/render/ultimate/{player.name}/bust?borderHighlight=true&borderHighlightRadius=5"
-													alt={player.name}
-												/>
-												<div>
-													<h4 class="font-semibold text-white">
-														{player.name || 'Unknown Player'}
-													</h4>
-													<p class="font-mono text-sm text-slate-400">{player.uuid}</p>
-												</div>
-											</div>
-
-											{#if player.scores && Object.keys(player.scores).length > 0}
-												<div class="rounded-lg bg-slate-700/40 p-4">
-													<h5 class="mb-3 flex items-center font-medium text-slate-300">
-														<svg
-															class="mr-2 h-4 w-4"
-															fill="none"
-															stroke="currentColor"
-															viewBox="0 0 24 24"
-														>
-															<path
-																stroke-linecap="round"
-																stroke-linejoin="round"
-																stroke-width="2"
-																d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-															></path>
-														</svg>
-														Player Statistics
-													</h5>
-													<div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-														{#each getPlayerStats(player) as stat (stat.key)}
-															<div
-																class="rounded-md border border-slate-600/50 bg-slate-700/70 p-3 text-center transition-colors hover:bg-slate-700"
-															>
-																<div
-																	class="text-xs font-medium tracking-wide text-slate-400 uppercase"
+							{#if isCTFData(snapshot)}
+								<!-- CTF Data Structure -->
+								{#if getPlayerData(snapshot).length > 0}
+									<div class="overflow-x-auto">
+										<table class="w-full">
+											<thead>
+												<tr class="border-b border-slate-700/30">
+													<th class="pb-3 text-left text-sm font-medium text-slate-300">Player</th>
+													<th class="pb-3 text-center text-sm font-medium text-slate-300">Kills</th>
+													<th class="pb-3 text-center text-sm font-medium text-slate-300"
+														>Destroy</th
+													>
+													<th class="pb-3 text-center text-sm font-medium text-slate-300">Wins</th>
+												</tr>
+											</thead>
+											<tbody>
+												{#each getPlayerData(snapshot) as player}
+													<tr class="border-b border-slate-700/20 hover:bg-slate-700/20">
+														<td class="py-3">
+															<div class="flex items-center space-x-3">
+																<img
+																	class="h-8 w-8 rounded border border-slate-600"
+																	src="https://starlightskins.lunareclipse.studio/render/ultimate/RealSteve/bust?borderHighlight=true&borderHighlightRadius=5"
+																	alt={player.name}
+																	loading="lazy"
+																/>
+																<span class="font-medium text-white"
+																	>{player.name || 'Unknown'}</span
 																>
-																	{stat.key}
-																</div>
-																<div class="mt-1 text-xl font-bold text-white">
-																	{stat.value}
-																</div>
 															</div>
-														{/each}
+														</td>
+														<td class="py-3 text-center">
+															<span
+																class="inline-flex items-center rounded-full bg-red-700/30 px-2 py-1 text-sm font-medium text-red-300"
+															>
+																{player.kills || 0}
+															</span>
+														</td>
+														<td class="py-3 text-center">
+															<span
+																class="inline-flex items-center rounded-full bg-orange-700/30 px-2 py-1 text-sm font-medium text-orange-300"
+															>
+																{player.destroy || 0}
+															</span>
+														</td>
+														<td class="py-3 text-center">
+															<span
+																class="inline-flex items-center rounded-full bg-green-700/30 px-2 py-1 text-sm font-medium text-green-300"
+															>
+																{player.wins || 0}
+															</span>
+														</td>
+													</tr>
+												{/each}
+											</tbody>
+										</table>
+									</div>
+								{:else}
+									<div
+										class="flex flex-col items-center justify-center py-8 text-center text-slate-400"
+									>
+										<div
+											class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-700/50"
+										>
+											<svg
+												class="h-6 w-6 text-slate-500"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
+												></path>
+											</svg>
+										</div>
+										<p>No player data available for this CTF match</p>
+									</div>
+								{/if}
+							{:else}
+								<!-- Original Data Structure -->
+								{#if Array.isArray(snapshot.data) && snapshot.data.length > 0}
+									<div class="grid gap-6">
+										{#each snapshot.data as player (player.uuid || player.name)}
+											<div
+												class="rounded-lg border border-slate-700/30 bg-slate-800/40 p-6 transition-colors hover:bg-slate-800/60"
+											>
+												<div class="mb-4 flex items-center gap-3">
+													<img
+														class="h-10 w-10 rounded-lg border border-slate-600"
+														src="https://starlightskins.lunareclipse.studio/render/ultimate/{player.name}/bust?borderHighlight=true&borderHighlightRadius=5"
+														alt={player.name}
+														loading="lazy"
+													/>
+													<div>
+														<h4 class="font-semibold text-white">
+															{player.name || 'Unknown Player'}
+														</h4>
+														<p class="font-mono text-sm text-slate-400">{player.uuid}</p>
 													</div>
 												</div>
-											{:else}
-												<div class="rounded-lg bg-slate-700/40 p-4 text-center text-slate-400">
-													No statistics available for this player
-												</div>
-											{/if}
-										</div>
-									{/each}
-								</div>
-							{:else}
-								<div
-									class="flex flex-col items-center justify-center py-8 text-center text-slate-400"
-								>
-									<div
-										class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-700/50"
-									>
-										<svg
-											class="h-6 w-6 text-slate-500"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
-											></path>
-										</svg>
+
+												{#if player.scores && Object.keys(player.scores).length > 0}
+													<div class="rounded-lg bg-slate-700/40 p-4">
+														<h5 class="mb-3 flex items-center font-medium text-slate-300">
+															<svg
+																class="mr-2 h-4 w-4"
+																fill="none"
+																stroke="currentColor"
+																viewBox="0 0 24 24"
+															>
+																<path
+																	stroke-linecap="round"
+																	stroke-linejoin="round"
+																	stroke-width="2"
+																	d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+																></path>
+															</svg>
+															Player Statistics
+														</h5>
+														<div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+															{#each getPlayerStats(player) as stat (stat.key)}
+																<div
+																	class="rounded-md border border-slate-600/50 bg-slate-700/70 p-3 text-center transition-colors hover:bg-slate-700"
+																>
+																	<div
+																		class="text-xs font-medium tracking-wide text-slate-400 uppercase"
+																	>
+																		{stat.key}
+																	</div>
+																	<div class="mt-1 text-xl font-bold text-white">
+																		{stat.value}
+																	</div>
+																</div>
+															{/each}
+														</div>
+													</div>
+												{:else}
+													<div class="rounded-lg bg-slate-700/40 p-4 text-center text-slate-400">
+														No statistics available for this player
+													</div>
+												{/if}
+											</div>
+										{/each}
 									</div>
-									<p>No player data available</p>
-								</div>
+								{:else}
+									<div
+										class="flex flex-col items-center justify-center py-8 text-center text-slate-400"
+									>
+										<div
+											class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-700/50"
+										>
+											<svg
+												class="h-6 w-6 text-slate-500"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
+												></path>
+											</svg>
+										</div>
+										<p>No player data available</p>
+									</div>
+								{/if}
 							{/if}
 						</div>
 					{/if}
